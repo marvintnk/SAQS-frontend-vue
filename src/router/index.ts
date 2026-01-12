@@ -12,12 +12,12 @@ const router = createRouter({
     {
       path: '/my-work-steps',
       name: 'actor-dashboard',
-      component: () => import('@/views/ActorDashboardView.vue') // Placeholder logic
+      component: () => import('@/views/ActorDashboardView.vue') // Lazy Loading für Performance
     },
     {
       path: '/workflow-manager',
       name: 'manager-dashboard',
-      component: () => import('@/views/ManagerDashboardView.vue') // Placeholder logic
+      component: () => import('@/views/ManagerDashboardView.vue') // Lazy Loading für Performance
     }
   ],
 })

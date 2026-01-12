@@ -12,8 +12,8 @@ export class ObjectiveApiService {
     const responseIds = await apiClient.get<string[]>('/Objective/GetAll', config);
     const ids = responseIds.data;
     
-    // In strict multi-tenancy we might trust the backend. But since we fetch individual items by ID, 
-    // ensuring they are fetched correctly is key. The backend likely only returned IDs belonging to the tenant.
+    // Wir vertrauen darauf, dass das Backend nur IDs zurückgibt, die zum Tenant gehören.
+    // Das Laden der Details muss robust sein, falls zwischen ID-Fetch und Detail-Fetch etwas gelöscht wurde.
     const promises = ids.map(id => this.getById(id));
     const objectives = await Promise.all(promises);
     return objectives.filter((o): o is Workflow => o !== null);

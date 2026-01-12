@@ -11,7 +11,7 @@ export const useWorkStepStore = defineStore('workStep', () => {
   const error = ref<string | null>(null);
   const userStore = useUserStore();
 
-  // SignalR Integeration
+  // SignalR Initialization
   function initSignalR() {
       signalRService.start();
       signalRService.onAssignmentUpdated(async (guid) => {
@@ -19,10 +19,8 @@ export const useWorkStepStore = defineStore('workStep', () => {
       });
   }
   
-  // Call init immediately? Or better let the component call it? 
-  // Stores are lazy, but once used, we want it running.
-  // We'll call it inside loadAllWorkSteps if not connected, or just call it here.
-  // Ideally, start it once.
+  // Wir starten SignalR direkt beim Laden des Stores (Singleton), damit wir keine
+  // Echtzeit-Updates verpassen, sobald die App "richtig" läuft.
   initSignalR();
 
   // Getters
@@ -55,7 +53,8 @@ export const useWorkStepStore = defineStore('workStep', () => {
   }
 
   async function refreshWorkStep(guid: string) {
-      // Don't set global loading default to avoid flicker, maybe just silent update
+      // Kein globales Lade-Icon triggern ("Silent Update"), damit die UI bei kleinen
+      // Updates im Hintergrund ruhig bleibt und nicht flackert.
       try {
           const updated = await assignmentService.getById(guid);
           if (updated) {
@@ -63,22 +62,13 @@ export const useWorkStepStore = defineStore('workStep', () => {
               if (index !== -1) {
                   workSteps.value[index] = updated;
               } else {
-                  // New assignment? Add it.
+                  // Neues Assignment live reingekommen
                   workSteps.value.push(updated);
               }
           } else {
-             // If null is returned, maybe it was deleted?
-             // But getById returns null on error too.
-             // If deleted, we should remove it.
-             // But getById returning null is ambiguous in my implementation (could be error).
-             // However, for now, if we can't fetch it, we ignore assignment update or we could reload all.
-             // Let's reload all if we suspect deletion or sync issue
-             const index = workSteps.value.findIndex(s => s.guid === guid);
-             if (index !== -1) {
-                 // It existed, but now we can't fetch it. Maybe deleted?
-                 // Let's remove it to be safe or do nothing.
-                 // Safer: do nothing on error. 
-             }
+             // Edge Case: Backend liefert null (z.B. gelöscht oder Fehler).
+             // Wir machen hier nichts, um den lokalen State nicht voreilig kaputt zu machen.
+             // Ein sauberer Sync beim nächsten Page-Reload regelt das.
           }
       } catch (e) {
           console.error('Failed to refresh work step via SignalR', e);
@@ -121,22 +111,23 @@ export const useWorkStepStore = defineStore('workStep', () => {
       const step = workSteps.value.find(s => s.guid === guid);
       if (step) {
         step.priority = priority;
+  async function updatePriority(guid: string, priority: number) {
+    // Hier könnten wir "optimistisch" das UI updaten, bevor der Request durch ist.
+    // Sicherer ist im MVP aber: Request -> abwarten -> State Update bei Erfolg.
+    try {
+      await assignmentService.setPriority(guid, priority);
+      // Lokales Update reicht, müssen nicht alles neu laden
+      const step = workSteps.value.find(s => s.guid === guid);
+      if (step) {
+        step.priority = priority;
       }
     } catch (e) {
       console.error(e);
       error.value = 'Failed to update priority';
-      // Revert or reload
+      // Bei Fehler State lieber einmal sauber neu ziehen
       await loadAllWorkSteps();
     }
-  }
-
-  async function updateStatus(guid: string, status: number) {
-    try {
-      await assignmentService.setStatus(guid, status);
-      const step = workSteps.value.find(s => s.guid === guid);
-      if (step) {
-        step.status = status;
-      }
+  }   }
     } catch (e) {
       console.error(e);
       error.value = 'Failed to update status';

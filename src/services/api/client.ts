@@ -1,8 +1,9 @@
 import axios from 'axios';
 import type { AxiosInstance, AxiosResponse } from 'axios';
 
-// Create a configured axios instance
-// Using a relative URL to allow Vite proxy to handle the target
+// Basis-Konfiguration für Axios.
+// Wir nutzen relative URLs ("/api"), damit der Vite Proxy im Dev-Mode
+// die Anfragen an das eigentliche Backend weiterleiten kann (CORS-Vermeidung).
 export const apiClient: AxiosInstance = axios.create({
   baseURL: '/api', 
   headers: {
@@ -11,7 +12,8 @@ export const apiClient: AxiosInstance = axios.create({
   timeout: 10000,
 });
 
-// Response interceptor for better error handling if needed
+// Response-Interceptor um Fehler zentral abzufangen, falls wir später
+// z.B. globales Error-Toast-Handling oder Auto-Logout bei 401 einbauen wollen.
 apiClient.interceptors.response.use(
   (response: AxiosResponse) => response,
   (error) => {

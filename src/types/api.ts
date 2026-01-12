@@ -1,3 +1,5 @@
+// 1:1 Abbild der C# Backend DTOs.
+// Vorsicht: Backend nutzt PascalCase, wir mappen das später auf camelCase für die interne Verwendung.
 export interface RoleDto {
   Guid: string;
   DisplayName: string;

@@ -102,7 +102,7 @@ const filteredUsers = computed(() => {
     );
 });
 
-// Reset user selection when tenant changes
+// User-Auswahl zurücksetzen, wenn der Mandant gewechselt wird.
 watch(selectedTenantGuid, () => {
     selectedUserGuid.value = '';
 });
@@ -112,10 +112,10 @@ const isFormValid = computed(() => {
 });
 
 onMounted(async () => {
-  // Always load all users to find potential Tenants (Managers)
+  // Alle User laden, um daraus die "Manager" (unsere Pseudo-Tenants) zu filtern.
   await userStore.loadUsers();
   
-  // If still empty (or no managers), try to init demo data
+  // Fallback: Wenn das Backend leer ist, Demo-Daten erzeugen.
   if (userStore.users.length === 0 || userStore.managers.length === 0) {
     console.log('No users found. Initializing demo data...');
     await userStore.initializeDemoData();
@@ -128,9 +128,8 @@ const handleEnter = () => {
 
   if (tenant && user) {
     userStore.login(user, tenant);
-    // Redirect to dashboard (to be implemented, presumably '/')
-    // Ideally, check role to decide where to go (Manager Dashboard or Actor Dashboard)
-    // For now, let's assume root is safe or redirect based on role
+    
+    // Routing basierend auf der Rolle (Manager vs. Worker).
     if (user.role?.displayName?.toLowerCase().includes('manager') || user.role?.isAdmin) {
        router.push('/workflow-manager'); 
     } else {
@@ -143,7 +142,7 @@ const handleCreateTenant = async () => {
     if (!newManagerName.value) return;
 
     try {
-        // 1. Find or Create Manager Role
+        // Manager Rolle suchen oder neu erstellen
         let roles = await roleService.getAll();
         // Check for Admin true OR name Manager
         let managerRole = roles.find(r => r.isAdmin || r.displayName.toLowerCase() === 'manager');
@@ -155,17 +154,17 @@ const handleCreateTenant = async () => {
              roleGuid = await roleService.create('Manager', true, 'System Administrator / Tenant');
         }
 
-        // 2. Create User
+        // User anlegen
         const guid = await actorService.create(newManagerName.value, roleGuid);
         
-        // Set TenantId to own GUID
+        // TenantId auf sich selbst setzen
         try {
             await actorService.setTenantId(guid, guid);
         } catch (ignore) {
              console.warn('SetTenantId failed (ignoring)', ignore);
         }
         
-        // 3. Refresh
+        // UI aktualisieren
         await userStore.loadUsers();
         showCreateTenant.value = false;
         newManagerName.value = '';

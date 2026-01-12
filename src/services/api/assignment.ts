@@ -9,7 +9,7 @@ export class AssignmentApiService {
     const responseIds = await apiClient.get<string[]>('/Assignment/GetAll', config);
     const ids = responseIds.data;
     
-    // Fetch details for all assignments
+    // Auch hier: N+1 Abfragen, um die Details zu jedem Assignment zu bekommen.
     const promises = ids.map(id => this.getById(id));
     const assignments = await Promise.all(promises);
     return assignments.filter((a): a is WorkStep => a !== null);
@@ -26,17 +26,17 @@ export class AssignmentApiService {
   }
 
   async create(assignment: Partial<WorkStep> & { parentObjectiveGuid: string }): Promise<string> {
-    // Mapping frontend model to backend DTO structure expected by Create endpoint
-    // Backend will handle SequenceNumber and Priority if not provided or ignored.
-    // AssigneeGuid and RequiredRoleGuid are optional in backend, but frontend enforces RequiredRoleGuid.
+    // Mapping auf das Backend-DTO.
+    // SequenceNumber und Priority werden vom Backend berechnet/ignoriert, falls wir sie hier mitschicken,
+    // daher lassen wir das Backend die Kontrolle über diese Felder.
     const payload = {
       DisplayName: assignment.displayName,
       Description: assignment.description,
       Duration: assignment.duration,
-      // SequenceNumber: assignment.sequenceNumber, // Backend handles this
-      AssigneeGuid: assignment.assigneeGuid || null, // Should be null on create per user request
+      // SequenceNumber: assignment.sequenceNumber, // Wird serverseitig handled
+      AssigneeGuid: assignment.assigneeGuid || null, // Explizit null setzen bei Erstellung
       RequiredRoleGuid: assignment.requiredRoleGuid,
-      // Priority: assignment.priority, // Backend calculates this
+      // Priority: assignment.priority, 
       Status: assignment.status,
       ParentObjectiveGuid: assignment.parentObjectiveGuid
     };

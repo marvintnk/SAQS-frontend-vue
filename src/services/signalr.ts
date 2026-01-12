@@ -9,7 +9,7 @@ class SignalRService {
   constructor() {
     this.connection = new signalR.HubConnectionBuilder()
       .withUrl('/api/Assignment/Notify', {
-        // Use default transport negotiation
+        // Standard Transport Negotiation (WebSockets -> SSE -> Long Polling)
       })
       .withAutomaticReconnect()
       .configureLogging(signalR.LogLevel.Information)
@@ -28,7 +28,8 @@ class SignalRService {
         console.log('SignalR Connected');
       } catch (err) {
         console.error('SignalR Connection Error: ', err);
-        // Retry logic could go here, but automatic reconnect handles drops
+        // Retry logic: AutomaticReconnect greift nur bei Verbindungsabbruch NACH erfolgreichem Connect.
+        // Initial müssen wir selbst retrien.
         setTimeout(() => this.start(), 5000);
       }
     }

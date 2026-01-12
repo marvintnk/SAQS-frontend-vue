@@ -1,6 +1,11 @@
 import type { ActorDto, RoleDto, ObjectiveDto, AssignmentDto } from '@/types/api';
 import type { User, Role, Workflow, WorkStep } from '@/types/domain';
 
+// Hier mappen wir die serverseitigen DTOs (oft PascalCase und inkonsistent) auf unsere
+// sauberen TypeScript-Interfaces (camelCase).
+// Der "as any" Cast ist dirty, aber rettet uns davor, dass TypeScript bei jedem Property
+// meckert, wenn das Backend mal wieder Groß/Kleinschreibung mischt.
+
 export function mapRoleDtoToRole(dto: RoleDto): Role {
   const d = dto as any;
   return {

@@ -7,15 +7,14 @@ import { roleService } from '@/services/api/role';
 export const useUserStore = defineStore('user', () => {
   const users = ref<User[]>([]);
   const currentUser = ref<User | null>(null);
-  const currentTenant = ref<User | null>(null); // The selected "Manager" acting as Tenant
+  const currentTenant = ref<User | null>(null); // Der User, der als "Manager" den Mandanten simuliert.
   const loading = ref(false);
   const error = ref<string | null>(null);
 
   // Getters
   const managers = computed(() => {
-    // Assuming "Tenant" is any user with a role that suggests management
-    // Or users simply marked as Manager. 
-    // Adapting to prompt: "im backend gib es keine tenants, nimm da einfach die user mit der role manager oder so als tenant"
+    // Workaround: Da das Backend keine strikte Tenant-Ressource exportiert,
+    // nutzen wir User mit "Manager"-Rolle als Pseudo-Tenants für die Auswahl im UI.
     return users.value.filter(u => 
       u.role?.displayName?.toLowerCase().includes('manager') || u.role?.isAdmin
     );
@@ -41,7 +40,7 @@ export const useUserStore = defineStore('user', () => {
     loading.value = true;
     
     try {
-      // 1. Check roles
+      // Stellen sicher, dass die benötigten Rollen existieren
       const roles = await roleService.getAll();
       let managerRole = roles.find(r => (r.displayName && r.displayName.toLowerCase() === 'manager') || r.displayName === 'Administrator');
       
@@ -52,9 +51,9 @@ export const useUserStore = defineStore('user', () => {
         } catch (roleError: any) {
            if (roleError.response && roleError.response.status === 409) {
              console.warn('Manager role already exists (409). Reloading roles to find it.');
-             // It exists but we didn't find it (maybe name mismatch?). Reload.
+             // Catch 409 Conflict: Jemand anderes (oder früherer Run) hat die Rolle schon angelegt.
+             // -> Neu laden um die GUID zu bekommen.
              const retryRoles = await roleService.getAll();
-             // Try to find it again, or fallback to ANY admin role
              managerRole = retryRoles.find(r => (r.displayName && r.displayName.toLowerCase() === 'manager')) || retryRoles.find(r => r.isAdmin);
            } else {
              throw roleError;
@@ -66,19 +65,19 @@ export const useUserStore = defineStore('user', () => {
         throw new Error('Could not find or create a Manager role.');
       }
 
-      // 2. Check Actors
-      // Refresh current list from backend to be sure
+      // Check Actors
+      // Liste neu laden, um sicherzugehen, dass wir keine unnötigen Doplikate erzeugen.
       const existingUsers = await actorService.getAll();
       const managerUser = existingUsers.find(u => u.displayName === 'BeispielFirma');
 
       if (!managerUser) {
-        // Create Manager (User who IS the Tenant)
+        // Manager User anlegen (Das ist unser "Mandant")
         const guid = await actorService.create('BeispielFirma', managerRole.guid);
-        // Set their TenantId to their own GUID
+        // TenantId auf sich selbst setzen -> Self-Reference Pattern für Tenant-Root
         await actorService.setTenantId(guid, guid);
       }
       
-      // Reload final state
+      // Finalen State laden
       await loadUsers();
       
     } catch (e: any) {

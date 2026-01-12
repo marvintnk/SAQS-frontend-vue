@@ -82,13 +82,13 @@ const myTasks = computed(() => {
     const myUserGuid = user.guid;
 
     return workStepStore.workSteps.filter(t => {
-        // Exclude completed
+        // Erledigte Aufgaben ausblenden
         if (t.status === AssignmentStatus.Completed) return false;
 
-        // 1. Assigned directly to me
+        // Direkt mir zugewiesen
         if (t.assigneeGuid === myUserGuid) return true;
 
-        // 2. Unassigned but matches my role
+        // Nicht zugewiesen, aber für meine Rolle relevant (Pool-Aufgaben)
         if (!t.assigneeGuid && t.requiredRoleGuid === myRoleGuid) return true;
 
         return false;

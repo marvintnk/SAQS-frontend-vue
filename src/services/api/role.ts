@@ -9,7 +9,8 @@ export class RoleApiService {
     const responseIds = await apiClient.get<string[]>('/Role/GetAll', config);
     const ids = responseIds.data;
     
-    // Similarly, rely on IDs being correct
+    // Gleiches Schema wie überall: IDs holen, dann Details parallel auflösen.
+    // Nicht schön für die Performance, aber aktuell notwendig API-seitig.
     const rolePromises = ids.map(id => this.getById(id));
     const roles = await Promise.all(rolePromises);
 

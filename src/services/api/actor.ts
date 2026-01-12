@@ -5,17 +5,17 @@ import type { ActorDto } from '@/types/api';
 
 export class ActorApiService {
   async getAll(tenantId?: string): Promise<User[]> {
-    // 1. Get all IDs
+    // Wir holen zuerst nur die IDs, da der Backend-Endpoint keine vollständigen Objekte liefert.
     const config = tenantId ? { params: { tenantId } } : {};
     const responseIds = await apiClient.get<string[]>('/Actor/GetAll', config);
     const ids = responseIds.data;
 
-    // 2. Fetch details for each ID (Backend N+1 issue noted in docs)
-    // Using Promise.all to fetch in parallel
+    // Workaround für fehlenden Bulk-Endpoint: Details parallel abfragen.
+    // Falls das Performance-Probleme macht, müssen wir im Backend einen besseren Endpoint anfragen.
     const userPromises = ids.map(id => this.getById(id));
     const users = await Promise.all(userPromises);
     
-    // Filter out nulls if any fetch failed
+    // Fehlerhafte Aufrufe (null) rausfiltern, damit die UI stabil bleibt.
     return users.filter((u): u is User => u !== null);
   }
 

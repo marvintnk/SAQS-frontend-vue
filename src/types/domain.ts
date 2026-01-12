@@ -13,7 +13,8 @@ export interface User {
   tenantId?: string;
 }
 
-// Simplified for now, will expand as needed
+// Das interne Domain-Modell (Clean Architecture).
+// Hier nutzen wir konsequent camelCase und TypeScript Enums.
 export interface Tenant {
   guid: string;
   displayName: string;
