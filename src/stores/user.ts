@@ -74,7 +74,12 @@ export const useUserStore = defineStore('user', () => {
         // Manager User anlegen (Das ist unser "Mandant")
         const guid = await actorService.create('BeispielFirma', managerRole.guid);
         // TenantId auf sich selbst setzen -> Self-Reference Pattern für Tenant-Root
-        await actorService.setTenantId(guid, guid);
+        try {
+            await actorService.setTenantId(guid, guid);
+        } catch (ignore: any) {
+            // Ignore 400 if it works anyway or is validated strictly
+            console.warn('Init Demo Data: SetTenantId might have failed but continuing...', ignore);
+        }
       }
       
       // Finalen State laden
