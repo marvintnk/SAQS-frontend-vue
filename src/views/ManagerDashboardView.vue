@@ -229,15 +229,20 @@
                                 <td>{{ task.displayName }}</td>
                                 <td>{{ task.duration }} Std</td>
                                 <td>
+                                  <template v-if="task.status === 1">
                                     <select 
-                                        :value="task.priority" 
-                                        @change="e => handlePriorityChange(task.guid, +(e.target as HTMLSelectElement).value)"
-                                        class="priority-select"
+                                      :value="task.priority" 
+                                      @change="e => handlePriorityChange(task.guid, +(e.target as HTMLSelectElement).value)"
+                                      class="priority-select"
                                     >
-                                        <option :value="0">Kurzfristig</option>
-                                        <option :value="1">Mittelfristig</option>
-                                        <option :value="2">Langfristig</option>
+                                      <option :value="0">Kurzfristig</option>
+                                      <option :value="1">Mittelfristig</option>
+                                      <option :value="2">Langfristig</option>
                                     </select>
+                                  </template>
+                                  <template v-else>
+                                    <span class="priority-hint">Prio erst bei Bearbeitung.</span>
+                                  </template>
                                 </td>
                                 <td>{{ task.status === 0 ? 'Geplant' : (task.status === 1 ? 'In Bearbeitung' : 'Erledigt') }}</td>
                             </tr>

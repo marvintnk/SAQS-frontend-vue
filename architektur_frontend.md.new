@@ -1,0 +1,120 @@
+# Architektur Frontend (SAQS-frontend-vue)
+
+Stand: 12.01.2026
+
+## 1. Zweck & Kontext
+Dieses Repository enthält das Vue-Frontend der Web-Applikation „Kolla“. Der Prototyp deckt Workflow-/Aufgabenmanagement mit Rollen, einer Manager-Sicht und einer persönlichen Aufgabenliste ab.
+
+Wichtige Domänenbegriffe (wie sie im Code verwendet werden):
+- **Workflow**: Im Backend als **Objective** modelliert (`/Objective/*`), im Frontend als `Workflow` in `src/types/domain.ts`.
+- **WorkStep / Arbeitsschritt**: Im Backend als **Assignment** modelliert (`/Assignment/*`), im Frontend als `WorkStep`.
+- **Actor**: Backend-Entität für Benutzer. Wird im Frontend auf `User` gemappt.
+- **Role**: Backend-Rolle (`RoleDto`), im Frontend als `Role` (Interface) im Domain-Modell.
+
+Quelle fachlicher Anforderungen: `anforderungen.md`.
+
+## 2. Tech-Stack & Tooling (Ist-Zustand)
+### Runtime
+- **Vue 3** (Composition API, `<script setup lang="ts">`)
+- **Vue Router 4**
+- **Pinia**
+- **Axios** für HTTP (`src/services/api/client.ts`)
+- **SignalR** (`@microsoft/signalr`) für Live-Updates der Assignments (`src/services/signalr.ts`)
+
+### Build / Dev
+- **Vite** als Dev-Server/Bundler
+- Type-Checking via **vue-tsc** (`npm run type-check`)
+
+Hinweis: ESLint/Prettier/Vitest sind in diesem Repo aktuell nicht konfiguriert.
+
+## 3. Architektur-Überblick
+Das Frontend ist bewusst schlank gehalten und gliedert sich in folgende Schichten:
+
+- **Views (UI + Orchestrierung)**: `src/views/*`
+- **State / Domain-Logik**: `src/stores/*` (Pinia)
+- **Data Access**: `src/services/api/*` (Axios Client + Ressource-Services) und `src/services/signalr.ts`
+- **Types**: `src/types/*` (DTOs und Domain-Modelle)
+
+Es gibt aktuell **keinen** separaten `src/components/*` oder `src/composables/*` Layer; Logik liegt überwiegend in Views und Stores.
+
+## 4. Verzeichnisstruktur (relevant)
+- `src/main.ts`: App-Bootstrap (Pinia, Router)
+- `src/App.vue`: App-Shell + Session-Restore-Overlay
+- `src/router/index.ts`: Routen (ohne Guards)
+- `src/views/*`: Seiten
+  - `StartView.vue` (Tenant/User Auswahl)
+  - `ManagerDashboardView.vue` (Workflows, Akteure, Rollen)
+  - `ActorDashboardView.vue` (persönliche Aufgabenliste)
+- `src/stores/*`: `user`, `workflow`, `workStep`
+- `src/services/api/*`: `client.ts`, `mappers.ts` + Services (`actor`, `role`, `objective`, `assignment`)
+- `src/services/signalr.ts`: SignalR Anbindung
+- `src/types/*`: `api.ts` (DTOs), `domain.ts` (Domain)
+
+## 5. Routing & Navigation (Ist-Zustand)
+Definiert in `src/router/index.ts`:
+- `/` → `StartView`
+- `/my-work-steps` → `ActorDashboardView` (lazy)
+- `/workflow-manager` → `ManagerDashboardView` (lazy)
+
+Zugriffskontrolle passiert derzeit **nicht** über Router Guards. Die Views prüfen minimal selbst (z. B. `ActorDashboardView` redirectet nach `/`, wenn kein `currentUser` gesetzt ist).
+
+## 6. State Management (Pinia)
+### 6.1 `user` Store (`src/stores/user.ts`)
+- State: `users`, `currentUser`, `currentTenant`, `loading`, `error`
+- „Tenant“ ist ein Workaround: Da das Backend keine eigene Tenant-Ressource bereitstellt, wird ein Manager-User als Pseudo-Tenant genutzt.
+- Persistenz: `currentUserGuid` und `currentTenantGuid` werden in `localStorage` gespeichert.
+- `restoreSession()` lädt User/Tenant per `actorService.getById()` nach.
+
+### 6.2 `workflow` Store (`src/stores/workflow.ts`)
+- Lädt/erstellt/löscht Workflows über `objectiveService`.
+- Übergibt `tenantId` (GUID des aktuellen Tenants) als Query-Param, wenn vorhanden.
+
+### 6.3 `workStep` Store (`src/stores/workStep.ts`)
+- Lädt/erstellt/löscht WorkSteps über `assignmentService`.
+- Startet SignalR einmalig und aktualisiert einzelne WorkSteps bei `OnAssignmentUpdated`.
+- Bietet abgeleitete Werte wie `getWorkStepsByWorkflow` und `getWorkflowStats`.
+
+## 7. API-Integration
+### 7.1 Dev-Proxy
+`vite.config.ts` proxied `/api` auf `http://localhost:5007` und rewritet das Prefix weg.
+
+### 7.2 HTTP Client
+`src/services/api/client.ts` nutzt Axios mit:
+- `baseURL: '/api'`
+- JSON-Header
+- Response-Interceptor (Logging)
+
+### 7.3 Services & Mapping
+`src/services/api/*` kapselt Backend-Endpunkte pro Ressource.
+Ein häufiges Muster ist:
+- `GetAll` liefert eine Liste an GUIDs
+- Details werden per `Promise.all` über `Get/{id}` nachgeladen (Client-seitiges N+1)
+
+Mapping liegt in `src/services/api/mappers.ts` (DTO → Domain). Dabei werden PascalCase/camelCase Varianten toleriert, da die Backend-Responses nicht überall konsistent sind.
+
+## 8. Live-Updates (SignalR)
+`src/services/signalr.ts` verbindet auf `/api/Assignment/Notify` und hört auf `OnAssignmentUpdated`.
+Der `workStep` Store reagiert darauf und führt ein "Silent Update" (`refreshWorkStep`) durch.
+
+## 9. Wichtige Datenflüsse (End-to-End)
+### 9.1 Start / Login
+`StartView.vue`:
+- lädt Users
+- initialisiert ggf. Demo-Daten (`initializeDemoData()`)
+- Login setzt `currentUser` + `currentTenant` und routed je nach Rolle nach Manager/Actor Dashboard
+
+### 9.2 Manager → Workflows & Aufgaben
+`ManagerDashboardView.vue` nutzt Stores/Services, um:
+- Workflows anzulegen/löschen
+- Assignments pro Workflow zu verwalten
+- Rollen und Akteure zu pflegen
+
+### 9.3 Actor → "Meine Aufgaben"
+`ActorDashboardView.vue` filtert die globale WorkStep-Liste:
+- Aufgaben, die direkt dem User zugewiesen sind
+- oder Pool-Aufgaben ohne Assignee, deren `requiredRoleGuid` zur eigenen Rolle passt
+
+## 10. Bekannte Tradeoffs / Risiken
+- **N+1 Calls**: GUID-Listen + paralleles Nachladen der Details
+- **Auth/RBAC**: Keine Router-Guards; Zugriff ist primär UI-seitig (Prototyp)
+- **Tenant-Konzept**: Pseudo-Tenant über Manager-User; Backend/Frontend-Sicht ist nicht strikt getrennt
