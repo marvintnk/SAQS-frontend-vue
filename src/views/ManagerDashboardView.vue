@@ -3,7 +3,7 @@
     <header class="dashboard-header">
       <h1>Workflow Manager Dashboard</h1>
       <div class="user-info">
-        Eingeloggt als: {{ userStore.currentUser?.displayName }}
+        Eingeloggt als: {{ userStore?.currentUser?.displayName }}
         <button @click="logout" class="btn-logout">Logout</button>
       </div>
     </header>
@@ -28,7 +28,7 @@
             <div v-for="wf in workflowStore.workflows" :key="wf.guid" class="workflow-card">
                 <h3>{{ wf.displayName }}</h3>
                 <p>{{ wf.description }}</p>
-                <p><strong>Deadline:</strong> {{ new Date(wf.deadlineDate).toLocaleDateString() }}</p>
+              <p><strong>Deadline:</strong> {{ formatDeadline(wf.deadlineDate) }}</p>
                 
                 <div class="stats-container">
                     <div class="stat-item">
@@ -37,7 +37,7 @@
                     </div>
                     <div class="stat-item">
                         <span class="stat-label">Gesamtdauer</span>
-                        <span class="stat-value">{{ workStepStore.getWorkflowStats(wf.guid).duration }} min</span>
+                      <span class="stat-value">{{ workStepStore.getWorkflowStats(wf.guid).duration }} Std</span>
                     </div>
                 </div>
 
@@ -58,7 +58,7 @@
             </div>
             <div class="detail-meta">
                 <p>{{ selectedWorkflow.description }}</p>
-                <p>Deadline: {{ new Date(selectedWorkflow.deadlineDate).toLocaleDateString() }}</p>
+              <p>Deadline: {{ formatDeadline(selectedWorkflow.deadlineDate) }}</p>
             </div>
 
             <div class="section-actions">
@@ -72,7 +72,7 @@
                         <tr>
                             <th>Nr.</th>
                             <th>Titel</th>
-                            <th>Dauer (Min)</th>
+                            <th>Dauer (Std)</th>
                             <th>Priorität</th>
                             <th>Benötigte Rolle</th>
                             <th>Status</th>
@@ -85,15 +85,20 @@
                             <td>{{ task.displayName }}</td>
                             <td>{{ task.duration }}</td>
                             <td>
+                              <template v-if="task.status === 1">
                                 <select 
-                                    :value="task.priority" 
-                                    @change="e => handlePriorityChange(task.guid, +(e.target as HTMLSelectElement).value)"
-                                    class="priority-select"
+                                  :value="task.priority" 
+                                  @change="e => handlePriorityChange(task.guid, +(e.target as HTMLSelectElement).value)"
+                                  class="priority-select"
                                 >
-                                    <option :value="0">Kurzfristig</option>
-                                    <option :value="1">Mittelfristig</option>
-                                    <option :value="2">Langfristig</option>
+                                  <option :value="0">Kurzfristig</option>
+                                  <option :value="1">Mittelfristig</option>
+                                  <option :value="2">Langfristig</option>
                                 </select>
+                              </template>
+                              <template v-else>
+                                <span class="priority-hint">Prio erst bei Bearbeitung.</span>
+                              </template>
                             </td>
                             <td>{{ roles.find(r => r.guid === task.requiredRoleGuid)?.displayName || '-' }}</td>
                             <td>{{ task.status === 0 ? 'Geplant' : (task.status === 1 ? 'In Bearbeitung' : 'Erledigt') }}</td>
@@ -114,7 +119,7 @@
             <form @submit.prevent="handleCreateWorkflow">
               <label>Name: <input v-model="newWorkflow.title" required /></label>
               <label>Beschreibung: <input v-model="newWorkflow.description" /></label>
-              <label>Deadline: <input type="date" v-model="newWorkflow.deadline" required /></label>
+              <label>Deadline: <input type="datetime-local" v-model="newWorkflow.deadline" required /></label>
               
               <div class="modal-actions">
                 <button type="button" @click="showCreateWorkflow = false">Abbrechen</button>
@@ -131,12 +136,12 @@
                 <form @submit.prevent="handleCreateAssignment">
                     <label>Titel: <input v-model="newAssignment.displayName" required /></label>
                     <label>Beschreibung: <input v-model="newAssignment.description" /></label>
-                    <label>Dauer (Min): <input type="number" v-model.number="newAssignment.duration" min="1" required /></label>
+                    <label>Dauer (Std): <input type="number" v-model.number="newAssignment.duration" min="0.25" step="0.25" required /></label>
                     
                     <label>Benötigte Rolle:
                         <select v-model="newAssignment.requiredRoleGuid" required>
                             <option value="" disabled>Bitte wählen...</option>
-                            <option v-for="r in roles" :key="r.guid" :value="r.guid">{{ r.displayName }}</option>
+                        <option v-for="r in assignmentCreatableRoles" :key="r.guid" :value="r.guid">{{ r.displayName }}</option>
                         </select>
                     </label>
 
@@ -166,7 +171,7 @@
                <button 
                  class="btn-delete" 
                  @click="handleDeleteActor(user.guid)"
-                 :disabled="user.guid === userStore.currentUser?.guid">
+                 :disabled="user.guid === userStore?.currentUser?.guid">
                  Löschen
                </button>
              </div>
@@ -184,7 +189,7 @@
               <label>Rolle: 
                 <select v-model="newActor.roleGuid" required>
                   <option value="" disabled>Bitte wählen...</option>
-                  <option v-for="role in roles" :key="role.guid" :value="role.guid">
+                  <option v-for="role in actorCreatableRoles" :key="role.guid" :value="role.guid">
                     {{ role.displayName }}
                   </option>
                 </select>
@@ -222,7 +227,7 @@
                             <tr v-for="task in actorAssignments" :key="task.guid">
                                 <td>{{ workflowStore.workflows.find(w => w.guid === task.parentObjectiveGuid)?.displayName || 'Unbekannt' }}</td>
                                 <td>{{ task.displayName }}</td>
-                                <td>{{ task.duration }} min</td>
+                                <td>{{ task.duration }} Std</td>
                                 <td>
                                     <select 
                                         :value="task.priority" 
@@ -331,6 +336,17 @@ const actorAssignments = computed(() => {
     return workStepStore.workSteps.filter(ws => ws.requiredRoleGuid === roleGuid);
 });
 
+const isManagerRole = (r: Role) => (r.isAdmin || r.displayName?.trim().toLowerCase() === 'manager');
+const actorCreatableRoles = computed(() => roles.value.filter(r => !isManagerRole(r)));
+const assignmentCreatableRoles = computed(() => roles.value.filter(r => !isManagerRole(r)));
+
+const formatDeadline = (deadlineDate: string | null | undefined) => {
+  if (!deadlineDate) return '-';
+  const d = new Date(deadlineDate);
+  if (Number.isNaN(d.getTime())) return '-';
+  return `${d.toLocaleDateString('de-DE')} ${d.toLocaleTimeString('de-DE', { hour: '2-digit', minute: '2-digit' })}`;
+};
+
 // Forms
 const newWorkflow = ref({ title: '', description: '', deadline: '' });
 const newAssignment = ref({ 
@@ -343,13 +359,17 @@ const newActor = ref({ name: '', roleGuid: '' });
 const newRole = ref({ name: '', description: '', isAdmin: false });
 
 onMounted(async () => {
-    // Ensure we working with tenant users if available
+  if (!userStore?.currentUser) {
+    router.push('/');
+    return;
+  }
+
   const tenantId = userStore.currentTenant?.guid;
   await Promise.all([
-      workflowStore.loadWorkflows(),
-      workStepStore.loadAllWorkSteps(),
-      userStore.loadUsers(tenantId),
-      loadRoles()
+    workflowStore.loadWorkflows(),
+    workStepStore.loadAllWorkSteps(),
+    userStore.loadUsers(tenantId),
+    loadRoles(),
   ]);
 });
 
@@ -400,6 +420,12 @@ const handleCreateAssignment = async () => {
     if (!newAssignment.value.requiredRoleGuid) {
         alert('Eine Rolle muss zugewiesen werden.');
         return;
+    }
+
+    const selectedRole = roles.value.find(r => r.guid === newAssignment.value.requiredRoleGuid);
+    if (selectedRole && isManagerRole(selectedRole)) {
+      alert('Die Rolle "Manager" kann nicht für Aufgaben ausgewählt werden.');
+      return;
     }
 
     await workStepStore.createWorkStep({
@@ -453,6 +479,12 @@ const handleCreateActor = async () => {
         alert('Bitte eine Rolle auswählen.');
         return;
     }
+
+  const selectedRole = roles.value.find(r => r.guid === newActor.value.roleGuid);
+  if (selectedRole && isManagerRole(selectedRole)) {
+    alert('Die Rolle "Manager" kann nur der Tenant-Manager haben.');
+    return;
+  }
     const tenantId = userStore.currentTenant?.guid;
     await actorService.create(newActor.value.name, newActor.value.roleGuid, tenantId);
     await userStore.loadUsers(tenantId); // Refresh
@@ -540,6 +572,15 @@ const handleViewActorTasks = (user: User) => {
   background: #42b983;
   color: white;
   border-color: #42b983;
+}
+
+.priority-hint {
+  display: inline-block;
+  font-size: 0.85rem;
+  color: #666;
+  white-space: normal;
+  max-width: 140px;
+  line-height: 1.2;
 }
 
 .section-actions {
@@ -632,7 +673,7 @@ label {
     margin-bottom: 0.5rem;
 }
 
-input[type="text"], input[type="date"], select {
+input[type="text"], input[type="date"], input[type="datetime-local"], select {
     padding: 0.5rem;
     margin-top: 0.3rem;
     border: 1px solid #ccc;

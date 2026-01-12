@@ -1,20 +1,37 @@
 <script setup lang="ts">
 import { RouterView } from 'vue-router'
 import { useUserStore } from '@/stores/user';
-import { onMounted, ref } from 'vue';
+import { onMounted, ref, onErrorCaptured } from 'vue';
 
 const userStore = useUserStore();
 const isRestoring = ref(true);
+const globalError = ref<string | null>(null);
 
 onMounted(async () => {
-  await userStore.restoreSession();
-  isRestoring.value = false;
+  try {
+      await userStore.restoreSession();
+  } catch(e) {
+      console.error("Critical session restore error", e);
+  } finally {
+      isRestoring.value = false;
+  }
+});
+
+onErrorCaptured((err) => {
+    console.error("Captured global error:", err);
+    globalError.value = String(err);
+    return false; // Stop propagation
 });
 </script>
 
 <template>
   <div class="app-container">
-    <div v-if="isRestoring" class="loading-overlay">
+    <div v-if="globalError" class="global-error">
+        <h2>Ein kritischer Fehler ist aufgetreten:</h2>
+        <pre>{{ globalError }}</pre>
+        <button @click="globalError = null; $router.push('/')">Zur Startseite</button>
+    </div>
+    <div v-else-if="isRestoring" class="loading-overlay">
        <div class="spinner">Lade Kolla...</div>
     </div>
     <RouterView v-else />
@@ -40,5 +57,14 @@ body {
     z-index: 9999;
     color: #666;
     font-size: 1.2rem;
+}
+
+.global-error {
+    padding: 2rem;
+    background: white;
+    color: #c0392b;
+    border: 1px solid #c0392b;
+    margin: 2rem;
+    border-radius: 8px;
 }
 </style>

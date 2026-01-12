@@ -8,7 +8,7 @@
             <button :class="{ active: viewMode === 'tiles' }" @click="viewMode = 'tiles'">Kacheln</button>
          </div>
          <div class="user-info">
-            {{ userStore.currentUser?.displayName }} ({{ userStore.currentUser?.role?.displayName || 'Keine Rolle' }})
+                {{ userStore?.currentUser?.displayName }} ({{ userStore?.currentUser?.role?.displayName || 'Keine Rolle' }})
             <button @click="logout" class="btn-logout">Logout</button>
          </div>
       </div>
@@ -32,7 +32,7 @@
                 </div>
              </div>
              <div class="task-meta">
-                <span>Dauer: {{ task.duration }} min</span>
+                     <span>Dauer: {{ task.duration }} Std</span>
                 <span>Deadline: {{ getDeadline(task.parentObjectiveGuid) }}</span>
              </div>
              <button class="btn-check" @click="completeTask(task.guid)" title="Als erledigt markieren">✔</button>
@@ -49,7 +49,7 @@
              <h3>{{ task.displayName }}</h3>
              <p class="description">{{ task.description || 'Keine Beschreibung' }}</p>
              <div class="card-footer">
-                <span>⏱ {{ task.duration }} min</span>
+                     <span>⏱ {{ task.duration }} Std</span>
                 <button class="btn-done" @click="completeTask(task.guid)">Erledigt</button>
              </div>
           </div>
@@ -75,15 +75,15 @@ const viewMode = ref<'list' | 'tiles'>('tiles');
 const loading = ref(false);
 
 const myTasks = computed(() => {
-    const user = userStore.currentUser;
+    const user = userStore?.currentUser;
     if (!user) return [];
 
     const myRoleGuid = user.role?.guid;
     const myUserGuid = user.guid;
 
     return workStepStore.workSteps.filter(t => {
-        // Erledigte Aufgaben ausblenden
-        if (t.status === AssignmentStatus.Completed) return false;
+        // Nur Aufgaben anzeigen, die aktuell in Bearbeitung sind
+        if (t.status !== AssignmentStatus.InProgress) return false;
 
         // Direkt mir zugewiesen
         if (t.assigneeGuid === myUserGuid) return true;
@@ -96,7 +96,7 @@ const myTasks = computed(() => {
 });
 
 onMounted(async () => {
-    if (!userStore.currentUser) {
+    if (!userStore?.currentUser) {
         router.push('/');
         return;
     }
@@ -117,7 +117,10 @@ const getWorkflowName = (guid: string | null) => {
 const getDeadline = (guid: string | null) => {
     if (!guid) return '-';
     const wf = workflowStore.workflows.find(w => w.guid === guid);
-    return wf ? new Date(wf.deadlineDate).toLocaleDateString() : '-';
+    if (!wf?.deadlineDate) return '-';
+    const d = new Date(wf.deadlineDate);
+    if (Number.isNaN(d.getTime())) return '-';
+    return `${d.toLocaleDateString('de-DE')} ${d.toLocaleTimeString('de-DE', { hour: '2-digit', minute: '2-digit' })}`;
 };
 
 const getPriorityClass = (p: Priority) => {
