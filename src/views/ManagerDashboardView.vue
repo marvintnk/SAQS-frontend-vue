@@ -506,18 +506,24 @@ const handleViewActorTasks = (user: User) => {
   margin-bottom: 2rem;
   border-bottom: 2px solid #eee;
   padding-bottom: 1rem;
+  flex-wrap: wrap; /* Added wrap */
+  gap: 1rem;
 }
 
 .user-info {
   display: flex;
   gap: 1rem;
   align-items: center;
+  flex-wrap: wrap; /* Added wrap */
 }
 
 .tabs {
   display: flex;
   gap: 1rem;
   margin-bottom: 2rem;
+  overflow-x: auto; /* Scrollable tabs on mobile */
+  padding-bottom: 0.5rem; /* Space for scrollbar */
+  white-space: nowrap; /* Keep buttons inline */
 }
 
 .tabs button {
@@ -527,6 +533,7 @@ const handleViewActorTasks = (user: User) => {
   border-radius: 4px;
   cursor: pointer;
   font-weight: bold;
+  flex-shrink: 0; /* Don't shrink buttons */
 }
 
 .tabs button.active {
@@ -586,12 +593,16 @@ const handleViewActorTasks = (user: User) => {
   background: white;
   padding: 2rem;
   border-radius: 8px;
-  min-width: 400px;
+  width: 90%;
+  max-width: 400px; /* Instead of min-width */
 }
 
 .modal-large {
-    min-width: 800px;
-    max-width: 90vw;
+    width: 95%;
+    max-width: 800px; /* Use max-width */
+    height: auto;
+    max-height: 90vh;
+    overflow-y: auto;
 }
 
 .modal form {
@@ -710,10 +721,15 @@ input[type="text"], input[type="date"], select {
     color: #2c3e50;
 }
 
+.assignment-list {
+    overflow-x: auto; /* Scrollable table container */
+}
+
 .assignment-list table {
     width: 100%;
     border-collapse: collapse;
     margin-top: 1rem;
+    min-width: 600px; /* Force table to have minimum width */
 }
 
 .assignment-list th, .assignment-list td {

@@ -160,12 +160,24 @@ const logout = () => {
     justify-content: space-between;
     align-items: center;
     margin-bottom: 2rem;
+    flex-wrap: wrap; 
+    gap: 1rem;
 }
 
 .controls {
     display: flex;
-    gap: 2rem;
+    gap: 1rem;
     align-items: center;
+    flex-wrap: wrap;
+    width: 100%;
+}
+
+@media (min-width: 768px) {
+    .controls {
+        width: auto;
+        gap: 2rem;
+        justify-content: flex-end;
+    }
 }
 
 .view-toggle {
@@ -214,6 +226,8 @@ const logout = () => {
     padding: 1rem;
     border-radius: 8px;
     box-shadow: 0 2px 4px rgba(0,0,0,0.05);
+    flex-wrap: wrap; 
+    gap: 1rem;
 }
 
 .task-main {
@@ -221,6 +235,8 @@ const logout = () => {
     align-items: center;
     gap: 1rem;
     flex: 2;
+    min-width: 250px;
+}
 }
 
 .task-info h3 {

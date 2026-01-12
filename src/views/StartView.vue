@@ -199,35 +199,52 @@ const handleDeleteTenant = async () => {
 
 <style scoped>
 .start-page {
+  width: 90%; /* Responsive width */
   max-width: 800px;
   margin: 0 auto;
-  padding: 2rem;
+  padding: 2rem 1rem; /* Less side padding on mobile */
   font-family: sans-serif;
   color: #333;
 }
 
 .header {
   text-align: center;
-  margin-bottom: 3rem;
+  margin-bottom: 2rem;
 }
 
 .header h1 {
-  font-size: 2.5rem;
+  font-size: 2rem; /* Smaller font on mobile */
   color: #2c3e50;
   margin-bottom: 0.5rem;
 }
 
 .subtitle {
-  font-size: 1.2rem;
+  font-size: 1rem;
   color: #666;
 }
 
 .content {
   background: white;
-  padding: 2rem;
+  padding: 1.5rem; /* Less padding */
   border-radius: 8px;
   box-shadow: 0 4px 6px rgba(0,0,0,0.1);
 }
+
+@media (min-width: 768px) {
+    .start-page {
+        padding: 2rem;
+    }
+    .header h1 {
+        font-size: 2.5rem;
+    }
+    .subtitle {
+        font-size: 1.2rem;
+    }
+    .content {
+        padding: 2rem;
+    }
+}
+
 
 .info-section {
   margin-bottom: 2rem;
@@ -356,7 +373,8 @@ select {
   background: white;
   padding: 2rem;
   border-radius: 8px;
-  min-width: 400px;
+  width: 90%; /* Fluid width */
+  max-width: 400px;
   box-shadow: 0 4px 12px rgba(0,0,0,0.2);
 }
 
