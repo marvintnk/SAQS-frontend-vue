@@ -237,7 +237,6 @@ const logout = () => {
     flex: 2;
     min-width: 250px;
 }
-}
 
 .task-info h3 {
     margin: 0;
